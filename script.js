@@ -20,6 +20,39 @@ const room = "global"; // Using a single global room for all peers.
 
 console.log("My Peer ID:", myId);
 
+// --- Candidate Batching Setup ---
+// We'll batch ICE candidates per peer to reduce message frequency.
+const candidateBatches = {};      // Object keyed by peerId storing an array of ICE candidates.
+const candidateFlushTimers = {};  // Timers for each peer's candidate batch.
+
+function queueCandidate(peerId, candidate) {
+  if (!candidateBatches[peerId]) {
+    candidateBatches[peerId] = [];
+  }
+  candidateBatches[peerId].push(candidate);
+  
+  // If no flush timer is set for this peer, set one for 300ms.
+  if (!candidateFlushTimers[peerId]) {
+    candidateFlushTimers[peerId] = setTimeout(() => {
+      flushCandidateBatch(peerId);
+    }, 300);
+  }
+}
+
+function flushCandidateBatch(peerId) {
+  const candidates = candidateBatches[peerId];
+  if (candidates && candidates.length > 0) {
+    sendMessage({
+      type: "candidates", // Note plural: this message carries an array of candidates.
+      candidates: candidates,
+      sender: myId,
+      target: peerId
+    });
+    candidateBatches[peerId] = []; // Clear the batch.
+  }
+  candidateFlushTimers[peerId] = null;
+}
+
 // ========================
 // Setup Local Media Stream
 // ========================
@@ -53,7 +86,13 @@ function joinRoom() {
     } else if (data.type === "answer") {
       handleAnswer(data.answer, data.sender);
     } else if (data.type === "candidate") {
+      // Fallback for single candidate messages.
       handleCandidate(data.candidate, data.sender);
+    } else if (data.type === "candidates") {
+      // Handle batched candidates.
+      data.candidates.forEach((cand) => {
+        handleCandidate(cand, data.sender);
+      });
     } else if (data.type === "announce") {
       // When a new peer announces, create an offer if not already connected.
       if (!peers[data.sender]) {
@@ -75,15 +114,10 @@ function createPeerConnection(peerId) {
   };
   const pc = new RTCPeerConnection(configuration);
 
-  // When an ICE candidate is found, send it to the peer via Ably.
+  // When an ICE candidate is found, add it to the batch.
   pc.onicecandidate = (event) => {
     if (event.candidate) {
-      sendMessage({
-        type: "candidate",
-        candidate: event.candidate,
-        sender: myId,
-        target: peerId
-      });
+      queueCandidate(peerId, event.candidate);
     }
   };
 
