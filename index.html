@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Modern Video Chat</title>
+    <!-- Google Fonts for modern typography -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <div class="header-container">
+        <h1>Modern Video Chat</h1>
+        <p>Seamless video communication with a sleek, modern design</p>
+      </div>
+    </header>
+    <main>
+      <div class="video-container" id="videos">
+        <!-- Local video is displayed here (muted to avoid echo) -->
+        <video id="localVideo" autoplay muted playsinline></video>
+      </div>
+    </main>
+    <!-- Include Ably library for signaling -->
+    <script src="https://cdn.ably.io/lib/ably.min.js"></script>
+    <!-- Main JavaScript file -->
+    <script src="script.js"></script>
+  </body>
+</html>
